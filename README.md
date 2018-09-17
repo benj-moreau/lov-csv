@@ -16,5 +16,6 @@ pip install -r requirements.txt
 # Run
 
 ```bash
-python lovcsv.py
+python lovcsv.py classes
+python lovcsv.py properties
 ```
