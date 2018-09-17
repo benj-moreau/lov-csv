@@ -183,7 +183,7 @@ def generate_properties_dataset():
 
 def split_string_lang(obj):
     splitted_obj = obj.replace('"', '').split('@')
-    string = splitted_obj[0].encode('utf-8')
+    string = splitted_obj[0].replace('^^http://www.w3.org/2001/XMLSchema#string', '').encode('utf-8')
     language = 'undefined'
     if len(splitted_obj) > 1:
         language = splitted_obj[1].encode('utf-8')
