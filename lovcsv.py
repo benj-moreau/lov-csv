@@ -1,5 +1,6 @@
 import csv
 import argparse
+import re
 
 from hdt import HDTDocument
 
@@ -30,7 +31,7 @@ except RuntimeError:
 def generate_classes_dataset():
     with open('lov_csv/lov_classes.csv', 'w') as f:
         writer = csv.writer(f, delimiter=";")
-        writer.writerow(['uri', 'uri_suffix', 'label', 'description', 'language', 'occurencies_in_datasets', 'reused_by_datasets', 'sub_classes', 'equivalent_classes', 'equivalent_classes_suffix', 'defined_by'])
+        writer.writerow(['uri', 'uri_prefix', 'uri_suffix', 'label', 'description', 'language', 'occurencies_in_datasets', 'reused_by_datasets', 'sub_classes', 'equivalent_classes', 'equivalent_classes_suffix', 'defined_by'])
         (classe_triples, cardinality) = LOV.search_triples("", RDF_TYPE, OWL_CLASS)
         (classe_triples2, cardinality2) = LOV.search_triples("", RDF_TYPE, RDF_CLASS)
         hdt_iterators = [classe_triples, classe_triples2]
@@ -39,7 +40,8 @@ def generate_classes_dataset():
             for classe_triple in hdt_iterator:
                 uri_classe = classe_triple[0].encode('utf-8')
                 if 'http' in uri_classe and uri_classe not in already_added_uri:
-                    uri_suffix = get_uri_suffix(uri_classe)
+                    uri_prefix = get_uri_prefix(uri_classe)
+                    uri_suffix = clean(get_uri_suffix(uri_classe))
                     already_added_uri.append(uri_classe)
                     sub_classes = []
                     equivalent_classes = []
@@ -102,15 +104,15 @@ def generate_classes_dataset():
                                 description = label
                             else:
                                 description = value['description']
-                            writer.writerow([uri_classe, uri_suffix, label, description, language, occurencies, reused, sub_classes, equivalent_classes, equivalent_classes_suffix, defined_by])
+                            writer.writerow([uri_classe, uri_prefix, uri_suffix, label, description, language, occurencies, reused, sub_classes, equivalent_classes, equivalent_classes_suffix, defined_by])
                     else:
-                        writer.writerow([uri_classe, uri_suffix, uri_suffix, uri_suffix, 'undefined', occurencies, reused, sub_classes, equivalent_classes, equivalent_classes_suffix, defined_by])
+                        writer.writerow([uri_classe, uri_prefix, uri_suffix, uri_suffix, uri_suffix, 'undefined', occurencies, reused, sub_classes, equivalent_classes, equivalent_classes_suffix, defined_by])
 
 
 def generate_properties_dataset():
     with open('lov_csv/lov_properties.csv', 'w') as f:
         writer = csv.writer(f, delimiter=";")
-        writer.writerow(['uri', 'uri_suffix', 'label', 'description', 'language', 'occurencies_in_datasets', 'reused_by_datasets', 'domain', 'range', 'sub_properties', 'equivalent_properties', 'equivalent_properties_suffix', 'defined_by'])
+        writer.writerow(['uri', 'uri_prefix', 'uri_suffix', 'label', 'description', 'language', 'occurencies_in_datasets', 'reused_by_datasets', 'domain', 'range', 'sub_properties', 'equivalent_properties', 'equivalent_properties_suffix', 'defined_by'])
         (property_triples, cardinality) = LOV.search_triples("", RDF_TYPE, OWL_PROPERTY)
         (property_triples2, cardinality2) = LOV.search_triples("", RDF_TYPE, RDF_PROPERTY)
         hdt_iterators = [property_triples, property_triples2]
@@ -119,7 +121,8 @@ def generate_properties_dataset():
             for property_triple in hdt_iterator:
                 uri_property = property_triple[0].encode('utf-8')
                 if 'http' in uri_property and uri_property not in already_added_uri:
-                    uri_suffix = get_uri_suffix(uri_property)
+                    uri_prefix = get_uri_prefix(uri_property)
+                    uri_suffix = clean(get_uri_suffix(uri_property))
                     already_added_uri.append(uri_property)
                     sub_properties = []
                     equivalent_properties = []
@@ -190,9 +193,9 @@ def generate_properties_dataset():
                                 description = label
                             else:
                                 description = value['description']
-                            writer.writerow([uri_property, uri_suffix, label, description, language, occurencies, reused, domain, p_range, sub_properties, equivalent_properties, equivalent_properties_suffix, defined_by])
+                            writer.writerow([uri_property, uri_prefix, uri_suffix, label, description, language, occurencies, reused, domain, p_range, sub_properties, equivalent_properties, equivalent_properties_suffix, defined_by])
                     else:
-                        writer.writerow([uri_property, uri_suffix, uri_suffix, uri_suffix, 'undefined', occurencies, reused, domain, p_range, sub_properties, equivalent_properties, equivalent_properties_suffix, defined_by])
+                        writer.writerow([uri_property, uri_prefix, uri_suffix, uri_suffix, uri_suffix, 'undefined', occurencies, reused, domain, p_range, sub_properties, equivalent_properties, equivalent_properties_suffix, defined_by])
 
 
 def split_string_lang(obj):
@@ -204,11 +207,29 @@ def split_string_lang(obj):
     return string, language
 
 
-def get_uri_suffix(typ):
-    if '#' in typ:
-        return typ.rsplit('#', 1)[-1]
+def get_uri_suffix(uri):
+    if '#' in uri:
+        return uri.rsplit('#', 1)[-1]
     else:
-        return typ.rsplit('/', 1)[-1]
+        return uri.rsplit('/', 1)[-1]
+
+
+def get_uri_prefix(uri):
+    if '#' in uri:
+        return '{}#'.format(uri.rsplit('#', 1)[0])
+    else:
+        return '{}/'.format(uri.rsplit('/', 1)[0])
+
+
+first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+all_cap_re = re.compile('([a-z0-9])([A-Z])')
+
+
+def clean(str):
+    # UnCamel, UnSnake ...
+    s1 = first_cap_re.sub(r'\1_\2', str)
+    s2 = all_cap_re.sub(r'\1_\2', s1).lower()
+    return s2.replace('_', ' ').replace('-', ' ')
 
 
 def main():
